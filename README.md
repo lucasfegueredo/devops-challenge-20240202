@@ -1,65 +1,153 @@
-# Infra Challenge 20240202
+# DevOps Challenge - AWS Infra + CI/CD
 
-## Introdução
+> This is a challenge by [Coodesh](https://coodesh.com/)
 
-Este é um teste para que possamos ver as suas habilidades como DevOps.
+## 📝 Descrição
+Este projeto tem como objetivo provisionar uma infraestrutura segura na AWS utilizando Terraform (100% IaC), implantar uma instância EC2 com NGINX para servir uma página estática (`index.html`) e automatizar o deploy contínuo via GitHub Actions.
 
-Nesse teste você deverá configurar um servidor, aplicar os principais recursos de segurança e trabalhar com Infra as Code
+## 🚀 Tecnologias e Ferramentas Utilizadas
+- **Terraform** (Infraestrutura como Código)
+- **AWS EC2, VPC, Subnet, Security Group, Internet Gateway, Route Table**
+- **NGINX** (servidor web)
+- **GitHub Actions** (CI/CD)
+- **Ubuntu Server 22.04 LTS** (Free Tier)
+- **SSH** (acesso remoto e deploy)
 
-[SPOILER] As instruções de entrega e apresentação do challenge estão no final deste Readme (=
+## 📁 Estrutura do Projeto
+```
+.
+├── .github/workflows/deploy.yaml   # Pipeline de CI/CD
+├── site/index.html                 # Página estática
+├── main.tf                         # Definição da infraestrutura principal
+├── variables.tf                    # Variáveis do projeto
+└── README.md                       # Este arquivo
+```
 
-### Antes de começar
- 
-- Considere como deadline da avaliação a partir do início do teste. Caso tenha sido convidado a realizar o teste e não seja possível concluir dentro deste período, avise a pessoa que o convidou para receber instruções sobre o que fazer.
-- Documentar todo o processo de investigação para o desenvolvimento da atividade (README.md no seu repositório); os resultados destas tarefas são tão importantes do que o seu processo de pensamento e decisões à medida que as completa, por isso tente documentar e apresentar os seus hipóteses e decisões na medida do possível.
+## 🏗️ Infraestrutura Provisionada
+Usando Terraform, são criados:
+- Uma **VPC** com suporte a DNS
+- Uma **sub-rede pública** na AZ `us-east-1a`
+- Um **Internet Gateway** e tabela de rotas
+- Um **Security Group** com acesso liberado para HTTP (80) e SSH (22)
+- Uma instância **EC2 t2.micro (Free Tier)** com Ubuntu 22.04
+- Instalação automatizada do **NGINX** via `user_data`
 
+## 🔐 Segurança
+- Apenas portas 22 e 80 abertas para acesso público
+- Autenticação por chave SSH (sem uso de usuário root ou acesso por senha)
+- Recomendação de uso de `EC2 Instance Connect` ou usuários IAM para produção
 
-## **Parte 1 - Configuração do Servidor**
+## 🔄 CI/CD com GitHub Actions
+Uma pipeline foi configurada para:
+1. Detectar mudanças no diretório `site/`
+2. Conectar via SSH na EC2
+3. Substituir o conteúdo do `/var/www/html/index.html`
+4. Reiniciar o NGINX
 
-A sua tarefa consiste em configurar um servidor baseado na nuvem e instalar e configurar alguns componentes básicos.
+## 📊 Monitoramento
 
+A instância EC2 utiliza integração com o **Amazon CloudWatch** para monitoramento de métricas básicas (CPU, disco, rede). Além disso:
 
-1. Configurar grupo de segurança na AWS
-2. Configuração da redes para o Servidor
-3. Configurar um servidor AWS (recomenda-se o freetier) executando uma versão Ubuntu LTS.
-4. Instalar e configurar qualquer software que você recomendaria em uma configuração de servidor padrão sob as perspectivas de segurança, desempenho, backup e monitorização.
-5. Instalar e configurar o nginx para servir uma página web HTML estática.
+- Logs do NGINX estão disponíveis em `/var/log/nginx/`
+- Pode-se configurar facilmente envio de logs para o CloudWatch Logs (fora do escopo deste desafio, mas recomendado em produção)
+- Para uma abordagem mais completa, ferramentas como **Prometheus + Node Exporter** podem ser adicionadas, mas foram evitadas aqui para manter o ambiente leve e dentro do Free Tier.
 
-
-
-## **Part 2 – Infra as Code**
-
-Como diferencial, você poderá configurar toda a infra-estrutura com ferramentas como:
-
-- Ansible
-- Terraform
-- AWS CDK ou CloudFormation
-
-Ao ter o projeto executando em um servidor e aplicando as melhores práticas de segurança com grupos de segurança e as configurações de rede criando completamente por código.
-
-
-## **Part 3 – Continuous Delivery**
-
-Desenhar e construir uma pipeline para apoiar a entrega contínua da aplicação de monitorização construída na Parte 2 no servidor configurado na Parte 1. Descrever a pipeline utilizando um diagrama de fluxo e explicar o objetivo e o processo de seleção usado em cada uma das ferramentas e técnicas específicas que compõem a sua pipeline. 
-
-## Readme do Repositório
-
-- Deve conter o título do projeto
-- Uma descrição sobre o projeto em frase
-- Deve conter uma lista com linguagem, framework e/ou tecnologias usadas
-- Como instalar e usar o projeto (instruções)
-- Não esqueça o [.gitignore](https://www.toptal.com/developers/gitignore)
-- Se está usando github pessoal, referencie que é um challenge by coodesh:  
-
->  This is a challenge by [Coodesh](https://coodesh.com/)
-
-## Finalização e Instruções para a Apresentação
-
-1. Adicione o link do repositório com a sua solução no teste
-2. Verifique se o Readme está bom e faça o commit final em seu repositório;
-3. Envie e aguarde as instruções para seguir. Caso o teste tenha apresentação de vídeo, dentro da tela de entrega será possível gravar após adicionar o link do repositório. Sucesso e boa sorte. =)
+## 💾 Backup (sem custo)
+A estratégia de backup recomendada é baseada em **snapshots manuais do volume EBS** da EC2:
+- Snapshots podem ser criados via Console ou CLI
+- Também é possível automatizar via **AWS Data Lifecycle Manager** sem custo adicional
 
 
-## Suporte
+### Exemplo de pipeline (`.github/workflows/deploy.yaml`)
+```yaml
+name: Deploy Hello World
 
-Para tirar dúvidas sobre o processo envie uma mensagem diretamente a um especialista no chat da plataforma. 
+on:
+  push:
+    paths:
+      - 'site/**'
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up SSH key
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Deploy HTML to EC2
+      run: |
+        scp -o StrictHostKeyChecking=no site/index.html ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/tmp/index.html
+        ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} "sudo mv /tmp/index.html /var/www/html/index.html && sudo systemctl restart nginx"
+```
+
+## 📡 Diagrama da Solução
+
+![diagrama](site/aws.png)
+
+> O código-fonte HTML e a infraestrutura são separados. A pipeline detecta alterações no HTML e realiza o deploy na EC2 provisionada.
+
+## 🛠️ Como rodar o projeto localmente
+### Pré-requisitos
+- Conta AWS com par de chaves SSH criado previamente
+- Terraform >= 1.3
+- GitHub repo com secrets:
+  - `EC2_PUBLIC_IP`: IP público da EC2
+  - `SSH_PRIVATE_KEY`: chave privada da instância EC2
+
+### Passos
+```bash
+# Clone o repositório
+$ git clone https://github.com/seu-usuario/devops-challenge.git
+$ cd devops-challenge
+
+# Configure a chave SSH no Terraform (key_name no variables.tf)
+
+# Inicialize o Terraform
+$ terraform init
+
+# Validar as alterações na a infraestrutura
+$ terraform validate
+
+# Visualizar as alterações na a infraestrutura
+$ terraform plan
+
+# Formatar os manifestos
+$ terraform fmt
+
+# Aplique a infraestrutura
+$ terraform apply
+
+# Acesse a EC2 com a chave criada
+$ ssh -i chave.pem ubuntu@<EC2_PUBLIC_IP>
+
+# Acesse no navegador
+# Não foi configurar um certificado digital, uma alternativa free seria utilizar o let's encrypt
+http://54.205.79.109/
+```
+
+---
+
+## ✅ Checklist de entrega
+- [x] Infraestrutura criada com Terraform ✅
+- [x] Servidor seguro com NGINX ✅
+- [x] Deploy automático via GitHub Actions ✅
+- [x] Página servida via HTTP ✅
+- [x] README completo ✅
+
+## 📌 Considerações finais
+Não utilizei docker e criei um container porque o enunciado fala sobre instalar e configurar softwares no servidor, como NGINX, sob perspectivas de segurança, performance e monitoramento.
+
+---
+
+## 📬 Suporte
+Para dúvidas sobre o processo, entre em contato com o suporte da Coodesh pela plataforma.
+
+---
+**This is a challenge by [Coodesh](https://coodesh.com/)**
