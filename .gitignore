@@ -1,0 +1,50 @@
+# Diretórios e arquivos do Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+crash.log
+terraform.tfvars
+override.tf
+override.tf.json
+*.tfplan
+
+# Arquivos de saída ou temporários
+*.log
+*.bak
+*.swp
+*.tmp
+
+# Chaves SSH e credenciais
+*.pem
+*.key
+*.pub
+*.crt
+*.csr
+*.der
+creds.sh
+
+# Diretórios do sistema
+.DS_Store
+Thumbs.db
+
+# GitHub Actions
+# (Não ignore workflows se estiverem em uso)
+# .github/
+
+# Python (caso use scripts auxiliares)
+__pycache__/
+*.py[cod]
+.env
+
+# Node.js (caso use npm para frontend)
+node_modules/
+dist/
+build/
+
+# VSCode / IDEs
+.vscode/
+.idea/
+
+# Arquivos site
+site/*.zip
+site/**/*.log
