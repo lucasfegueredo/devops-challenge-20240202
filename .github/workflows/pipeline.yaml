@@ -10,6 +10,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: devops-challenge-20240202
 
     steps:
     - name: Checkout repository
